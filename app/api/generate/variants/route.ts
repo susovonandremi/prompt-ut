@@ -1,156 +1,153 @@
-// app/api/generate/variants/route.ts (Enhanced)
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { normalizeResponse, selectBestVariant } from "../../../../lib/ui-schema";
-import { SYSTEM_PROMPT, FEW_SHOT_EXAMPLES, buildUserPrompt } from "../../../../lib/gemini-prompt";
+import { normalizeResponse, selectBestVariant } from "./../../../../lib/ui-schema";
+import { generateBestVariant } from "./../../../../lib/local.archetypes";
 
+type GenModel = "gemini-2.5-flash" | "gemini-2.5-flash-lite" | "gemini-2.5-pro";
 
-/**
- * Initialize Gemini model with optimal settings
- */
-function getModel(apiKey: string) {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
-    generationConfig: {
-      responseMimeType: "application/json",
-      temperature: 0.7,
-      topP: 0.9,
-      topK: 40,
-    },
-  });
+const FALLBACK_MODELS: GenModel[] = [
+  (process.env.GEMINI_MODEL as GenModel) || "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-pro",
+];
+
+// simple dev cache to avoid re-hitting API during a session
+const memoryCache = new Map<string, any>();
+
+function sleep(ms: number) {
+  return new Promise(res => setTimeout(res, ms));
 }
 
-/**
- * Generate UI variants with enhanced prompting
- */
-async function generateVariants(
-  model: any,
+function isTransient(msg: string) {
+  return /429|quota|rate|503|overload|unavailable|timeout/i.test(msg);
+}
+
+function stripFences(s: string) {
+  let t = (s || "").trim();
+  if (t.startsWith("```")) {
+    t = t.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+  }
+  return t;
+}
+
+async function callGeminiOnce(
+  apiKey: string,
+  modelName: GenModel,
   prompt: string,
   style: string
-): Promise<any> {
-  const userPrompt = buildUserPrompt(prompt, style);
-
-  // Build conversation with few-shot examples
-  const contents = [
-    { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
-    
-    // Add few-shot examples
-    { 
-      role: "user", 
-      parts: [{ text: `Example 1: ${FEW_SHOT_EXAMPLES[0].title}` }] 
+) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.4,
+      topP: 0.9,
+      topK: 32,
     },
-    { 
-      role: "model", 
-      parts: [{ text: JSON.stringify(FEW_SHOT_EXAMPLES[0].output) }] 
-    },
-    { 
-      role: "user", 
-      parts: [{ text: `Example 2: ${FEW_SHOT_EXAMPLES[1].title}` }] 
-    },
-    { 
-      role: "model", 
-      parts: [{ text: JSON.stringify(FEW_SHOT_EXAMPLES[1].output) }] 
-    },
-    
-    // Actual request
-    { role: "user", parts: [{ text: userPrompt }] },
-  ];
+  });
 
-  const result = await model.generateContent({ contents });
-  let text = result.response.text().trim();
+  const system = `
+Return ONLY JSON. Keys: "version","variants".
+Use nodes: container, card, text, button, input, image.
+Each node must be { "type": "...", "props": {...}, "children": [...] }.
+For text: props.value; button: props.label; image: props.src, props.alt.
+Output format:
+{ "version":"1", "variants":[ <ONE good root layout> ] }
+The layout must be clean, cohesive, production-ready.
+Style: ${style}.
+`;
 
-  // Clean markdown fences if present
-  if (text.startsWith("```")) {
-    text = text
-      .replace(/^```json/i, "")
-      .replace(/^```/, "")
-      .replace(/```$/, "")
-      .trim();
-  }
+  const user = `Prompt: ${prompt}`;
 
-  return JSON.parse(text);
+  const res = await model.generateContent({
+    contents: [
+      { role: "user", parts: [{ text: system }] },
+      { role: "user", parts: [{ text: user }] },
+    ],
+  });
+
+  const raw = stripFences(res.response.text() ?? "");
+  const json = JSON.parse(raw);
+  return json;
 }
 
-/**
- * POST /api/generate/variants
- * Generate high-quality UI from text prompt
- */
+async function generateWithRetry(
+  apiKey: string,
+  prompt: string,
+  style: string
+) {
+  // cache key by prompt+style
+  const key = `${prompt}||${style}`;
+  if (memoryCache.has(key)) return memoryCache.get(key);
+
+  let lastErr: any;
+  for (const model of FALLBACK_MODELS) {
+    // exponential backoff tries for this model
+    const tries = [300, 800, 1500, 3000]; // ms
+    for (let i = 0; i < tries.length; i++) {
+      try {
+        const raw = await callGeminiOnce(apiKey, model, prompt, style);
+        memoryCache.set(key, raw);
+        return raw;
+      } catch (e: any) {
+        lastErr = e;
+        const msg = String(e?.message || e);
+        const transient = isTransient(msg);
+        if (!transient) {
+          // non-transient; break to next model
+          break;
+        }
+        await sleep(tries[i]);
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt, style = "apple-min" } = await req.json();
-
-    // Validate input
     if (!prompt?.trim()) {
-      return NextResponse.json(
-        { error: "Prompt is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    // Check API key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY not configured" },
-        { status: 500 }
-      );
+      // still return local best so the demo never blocks
+      const local = generateBestVariant(prompt, style);
+      return NextResponse.json({ version: "1", variants: [local], note: "Missing GEMINI_API_KEY; using local generator" }, { status: 200 });
     }
 
-    const model = getModel(apiKey);
-
-    // Generate 3 variants
-    console.log("[Generation] Starting for prompt:", prompt);
-    const rawResponse = await generateVariants(model, prompt, style);
-
-    // Normalize and clean the response
-    console.log("[Generation] Normalizing response...");
-    const normalized = normalizeResponse(rawResponse);
-
-    if (normalized.variants.length === 0) {
-      return NextResponse.json(
-        { error: "No valid variants generated" },
-        { status: 500 }
-      );
+    // try API with retries + model fallback
+    let raw: any;
+    try {
+      raw = await generateWithRetry(apiKey, prompt, style);
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (isTransient(msg)) {
+        // API overloaded or quota → graceful local fallback
+        const local = generateBestVariant(prompt, style);
+        return NextResponse.json(
+          { version: "1", variants: [local], note: "Gemini overloaded; using local generator" },
+          { status: 200 }
+        );
+      }
+      // non-transient error
+      throw e;
     }
 
-    // Select the best variant using intelligent ranking
-    console.log("[Generation] Ranking variants...");
-    const bestVariant = selectBestVariant(normalized.variants, prompt);
-
-    if (!bestVariant) {
-      return NextResponse.json(
-        { error: "Failed to select best variant" },
-        { status: 500 }
-      );
-    }
-
-    // Return single best variant
-    return NextResponse.json({
-      version: "1",
-      variants: [bestVariant],
-    });
+    // normalize and pick best variant (we only want 1)
+    const normalized = normalizeResponse(raw);
+    const best = selectBestVariant(normalized.variants, prompt) ?? normalized.variants[0];
+    return NextResponse.json({ version: "1", variants: [best] }, { status: 200 });
   } catch (error: any) {
-    console.error("[Generation Error]", error);
-    
-    // Provide helpful error messages
-    if (error.message?.includes("API key")) {
-      return NextResponse.json(
-        { error: "Invalid API key. Please check your GEMINI_API_KEY." },
-        { status: 401 }
-      );
-    }
-
-    if (error.message?.includes("quota")) {
-      return NextResponse.json(
-        { error: "API quota exceeded. Please try again later." },
-        { status: 429 }
-      );
-    }
-
+    // final emergency fallback
+    const prompt = "Untitled UI";
+    const local = generateBestVariant(prompt, "apple-min");
     return NextResponse.json(
-      { error: error.message || "Generation failed" },
-      { status: 500 }
+      { version: "1", variants: [local], note: error?.message || "Generation failed; local fallback used." },
+      { status: 200 }
     );
   }
 }
