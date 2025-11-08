@@ -1,36 +1,162 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 AI UI Generator — Text-to-UI Builder
 
-## Getting Started
+A **Figma-like AI-driven UI Generator** built with **Next.js 14, Tailwind CSS, and Gemini API**, capable of transforming natural language prompts into **production-ready UI layouts** (JSON-based DSL).  
+It supports smart variant generation, visual rendering, and a **Prompt Hub** for saving and showcasing designs.
 
-First, run the development server:
+![Preview](public/preview.png)
 
-```bash
+---
+
+## 🚀 Overview
+
+The **AI UI Generator** allows users to type prompts like:
+
+> “Create a modern SaaS landing page with hero section, feature cards, and pricing table.”
+
+…and instantly generates structured UI layouts composed of:
+`container`, `card`, `text`, `image`, `button`, and `input`.
+
+Each generated layout is **automatically normalized and rendered** into a beautiful, minimal interface — inspired by **Apple Design & Material 3 principles**.
+
+---
+
+## 🧩 Key Features
+
+### 🎨 Intelligent UI Generation
+- Uses **Gemini 2.5 Flash / Pro** for smart, prompt-driven UI layout creation.  
+- Automatically maps component types and their hierarchy into JSON-based DSL.  
+- Produces consistent, aesthetic, and semantically structured outputs.
+
+### 🧱 Real-Time Rendering
+- Renders AI-generated DSL directly into live **React + Tailwind components**.
+- Supports nested containers, typography variants, buttons, cards, and images.
+
+### 🔍 Prompt Hub (Community Space)
+- Stores generated designs locally.
+- Includes search, preview, and voting system.
+- Perfect for demoing or sharing AI UI templates.
+
+### 🧠 Prompt Engineering
+- Optimized system prompt instructs Gemini to use only six core UI elements.
+- Uses **few-shot examples** and **response normalization** via Zod schemas.
+- Ensures JSON integrity, removing markdown noise and fixing invalid fields.
+
+### 💾 Offline Fallback
+- Includes a local archetype generator (`local-archetypes.ts`) to simulate Gemini output when API is disabled or quota is exceeded.
+
+---
+
+## 🧮 Tech Stack
+
+| Layer | Technology |
+|-------|-------------|
+| **Framework** | Next.js 14 (App Router) |
+| **Styling** | Tailwind CSS + shadcn/ui |
+| **Animation** | Framer Motion |
+| **AI Model** | Gemini 2.5 Flash / Pro |
+| **Validation** | Zod Schemas |
+| **Persistence** | LocalStorage |
+| **Deployment** | Vercel |
+| **Language** | TypeScript |
+
+---
+
+## 🏗️ Architecture
+
+```plaintext
+app/
+ ├── ai-ui-generator/
+ │   ├── page.tsx                → Main UI
+ │   ├── api/generate/variants/  → Gemini generation API
+ │   └── components/RenderNode.tsx → JSON-to-UI renderer
+lib/
+ ├── ui-schema.ts                → Defines and normalizes the UIDSL
+ ├── gemini-prompt.ts            → Prompt instructions for Gemini
+ ├── local-archetypes.ts         → Offline fallback templates
+ ├── ollama-json.ts              → JSON cleaner & schema validator
+public/
+ └── preview.png
+
+
+⚙️ Setup & Installation
+
+1️⃣ Clone the repository
+git clone https://github.com/susovonandremi/prompt-ut.git
+cd prompt-ut
+
+2️⃣ Install dependencies
+npm install
+
+3️⃣ Configure Environment
+
+Create a .env.local file:
+
+GEMINI_API_KEY=your_google_gemini_key
+GEMINI_MODEL=gemini-2.5-flash
+
+4️⃣ Run locally
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Then open → http://localhost:3000/ai-ui-generator
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+🧰 Developer Notes
 
-## Learn More
+-To disable generation (e.g., protect from public spam):
 
-To learn more about Next.js, take a look at the following resources:
+const GENERATION_DISABLED = true;
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Fallback automatically activates local templates when:
+- API key is missing
 
-## Deploy on Vercel
+- Gemini quota exceeds (429)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Model is overloaded (503)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+🧠 Example Output
+
+Prompt:
+
+“Create a grocery shopping app UI with home, featured items, and cart summary.”
+
+Generated Structure:
+
+13 container · 31 text · 5 button · 2 image · 6 card
+
+
+✅ These tags summarize how many UI components were generated in the layout, helping analyze Gemini’s output density and variety.
+
+🧑‍💻 Future Enhancements
+
+🌐 Public Prompt Hub with backend database
+
+🎨 Custom themes (Apple Neumorphism / Material 3)
+
+🧩 Drag-and-drop editor for generated UI
+
+💬 AI chat assistant to refine UI iteratively
+
+📱 Responsive UI previews
+
+💡 Inspiration
+
+This project was inspired by:
+
+Figma AI
+
+Lovable.io
+
+Vercel v0.dev
+
+The dream of fusing design intelligence and code automation.
+
+🧾 License
+
+MIT License © 2025 Susovon Sarkar (Remi)
+
+✨ Author
+
+👨‍🎨 Susovon Sarkar (Remi)
+🎓 University of Engineering & Management, Kolkata
+💼 UI/UX Designer • AI Enthusiast • Developer
