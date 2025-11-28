@@ -32,6 +32,7 @@ export const paddingClasses = {
   lg: 'p-6',
   xl: 'p-8',
   '2xl': 'p-12',
+  '3xl': 'p-16',
 } as const;
 
 export const containerMaxWidths = {
@@ -39,42 +40,60 @@ export const containerMaxWidths = {
   md: 'max-w-2xl', // 672px
   lg: 'max-w-5xl', // 1024px
   xl: 'max-w-7xl', // 1280px
+  '2xl': 'max-w-[1400px]',
   full: 'max-w-full',
 } as const;
 
 export const borderRadius = {
-  sm: '8px',
-  md: '12px',
-  lg: '16px',
-  xl: '20px',
-  '2xl': '24px',
-  full: '9999px',
+  none: 'rounded-none',
+  sm: 'rounded-sm',
+  md: 'rounded-md',
+  lg: 'rounded-lg',
+  xl: 'rounded-xl',
+  '2xl': 'rounded-2xl',
+  full: 'rounded-full',
 } as const;
 
 export const shadows = {
-  sm: '0 1px 2px rgba(0, 0, 0, 0.04)',
-  md: '0 4px 16px rgba(16, 24, 40, 0.06)',
-  lg: '0 8px 24px rgba(16, 24, 40, 0.08)',
-  xl: '0 12px 32px rgba(16, 24, 40, 0.10)',
-  card: '0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)',
+  none: 'shadow-none',
+  sm: 'shadow-sm',
+  md: 'shadow-md',
+  lg: 'shadow-lg',
+  xl: 'shadow-xl',
+  card: 'shadow-[0_2px_8px_rgba(0,0,0,0.08)]',
+} as const;
+
+export const backgrounds = {
+  default: 'bg-background',
+  muted: 'bg-muted',
+  primary: 'bg-primary text-primary-foreground',
+  secondary: 'bg-secondary text-secondary-foreground',
+  glass: 'bg-white/60 dark:bg-black/60 backdrop-blur-md border border-white/20',
+  'gradient-subtle': 'gradient-generate',
+  'gradient-vibrant': 'lovable-gradient',
 } as const;
 
 export const typography = {
   h1: {
-    size: 'text-4xl md:text-5xl',
+    size: 'text-4xl md:text-5xl lg:text-6xl',
     weight: 'font-bold',
     tracking: 'tracking-tight',
     leading: 'leading-tight',
   },
   h2: {
-    size: 'text-2xl md:text-3xl',
+    size: 'text-3xl md:text-4xl',
     weight: 'font-semibold',
     tracking: 'tracking-tight',
     leading: 'leading-snug',
   },
   h3: {
-    size: 'text-xl md:text-2xl',
+    size: 'text-2xl md:text-3xl',
     weight: 'font-semibold',
+    leading: 'leading-snug',
+  },
+  h4: {
+    size: 'text-xl md:text-2xl',
+    weight: 'font-medium',
     leading: 'leading-snug',
   },
   body: {
@@ -84,7 +103,7 @@ export const typography = {
   },
   small: {
     size: 'text-sm',
-    weight: 'font-normal',
+    weight: 'font-medium',
     leading: 'leading-normal',
   },
   muted: {
@@ -93,23 +112,33 @@ export const typography = {
     color: 'text-muted-foreground',
     leading: 'leading-relaxed',
   },
+  label: {
+    size: 'text-xs uppercase',
+    weight: 'font-bold',
+    tracking: 'tracking-wider',
+    color: 'text-muted-foreground',
+    leading: 'leading-none',
+  }
 } as const;
 
 export const gridCols = {
   1: 'grid-cols-1',
-  2: 'md:grid-cols-2',
-  3: 'md:grid-cols-2 lg:grid-cols-3',
-  4: 'md:grid-cols-2 lg:grid-cols-4',
+  2: 'grid-cols-1 md:grid-cols-2',
+  3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+  4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+  6: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6',
+  12: 'grid-cols-3 md:grid-cols-6 lg:grid-cols-12',
 } as const;
 
 /**
  * Card variants with consistent styling
  */
 export const cardVariants = {
-  default: 'bg-white/95 border border-black/[0.08] rounded-xl shadow-card',
-  elevated: 'bg-white/95 border border-black/[0.08] rounded-xl shadow-lg',
-  glass: 'bg-white/60 backdrop-blur-md border border-white/40 rounded-xl shadow-md',
-  flat: 'bg-white border border-black/[0.06] rounded-lg',
+  default: 'bg-card text-card-foreground border border-border rounded-xl shadow-sm',
+  elevated: 'bg-card text-card-foreground border-none rounded-xl shadow-lg',
+  glass: 'bg-white/60 dark:bg-black/60 backdrop-blur-md border border-white/20 rounded-xl shadow-sm',
+  flat: 'bg-muted/50 border-none rounded-lg',
+  bordered: 'bg-transparent border-2 border-dashed border-muted-foreground/20 rounded-xl',
 } as const;
 
 /**
