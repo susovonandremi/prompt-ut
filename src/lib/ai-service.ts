@@ -1,11 +1,8 @@
-// lib/ai-service.ts
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Groq } from "groq-sdk";
 import { normalizeResponse } from "./ui-schema";
-import { SYSTEM_PROMPT, PROMPT_ENHANCER_SYSTEM_PROMPT, buildUserPrompt } from "./gemini-prompt";
-
-
+import { SYSTEM_PROMPT } from "./gemini-prompt"; // Re-using prompt, it's generic enough
 
 export interface GenerationResult {
   data: any;
@@ -19,143 +16,105 @@ export type WrappedGenerationResult =
   | { success: false; error: string };
 
 export async function generateUI(prompt: string, style: string, imageBase64?: string): Promise<WrappedGenerationResult> {
-  // Initialize specific for this request
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return { success: false, error: "GEMINI_API_KEY is not set in environment variables (server-side)" };
+    return { success: false, error: "GROQ_API_KEY is not set in environment variables" };
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
+  const groq = new Groq({ apiKey });
 
-  // Strategy: Try preferred model, then fallback to stable models if 404/429
-  const modelsToTry = [
-    process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash-002",
-    "gemini-1.5-pro-002",
-    "gemini-pro"
-  ];
-
-  // Remove duplicates
-  const uniqueModels = [...new Set(modelsToTry)];
-
-  let lastError = null;
-
-  for (const modelName of uniqueModels) {
-    try {
-      console.log(`Attempting generation with model: ${modelName}`);
-      const model = genAI.getGenerativeModel({ model: modelName });
-
-      // Retry helper (429 handling with Exponential Backoff)
-      const generateWithRetry = async () => {
-        let attempts = 0;
-        while (attempts < 3) {
-          try {
-            return await model.generateContent(parts);
-          } catch (e: any) {
-            if (e.message?.includes("429") || e.status === 429) {
-              attempts++;
-              const delay = Math.pow(2, attempts + 1) * 1000; // 4s, 8s, 16s
-              console.log(`Debug: Hit 429 on ${modelName}. Retry ${attempts}/3 in ${delay}ms...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
-            }
-            throw e;
-          }
-        }
-        throw new Error("Failed after 3 retries (Rate Limited)");
-      };
-
-      // 1. Enhance Prompt (SKIPPED to prevent Vercel 10s Timeout)
-      const enhancedPrompt = prompt;
-
-      // 2. Generate UI
-      const systemInstruction = `${SYSTEM_PROMPT}\n\nIMPORTANT: The user may provide an image. Analyze it and replicate its layout, content, and style using the DSL.`;
-
-      const parts: any[] = [
-        { text: systemInstruction },
-        { text: `Style Preference: ${style}` },
-        { text: `Enhanced Prompt: ${enhancedPrompt}` }
-      ];
-
-      if (imageBase64) {
-        const base64Data = imageBase64.split(',')[1] || imageBase64;
-        parts.push({
-          inlineData: {
-            data: base64Data,
-            mimeType: "image/png"
-          }
-        });
-        parts.push({ text: "Replicate this image design as closely as possible using the DSL." });
-      }
-
-      const result = await generateWithRetry();
-      const text = result.response.text();
-
-      // Extract JSON
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : null;
-
-      if (!jsonString) {
-        throw new Error("No JSON found in response");
-      }
-
-      let json;
-      try {
-        json = JSON.parse(jsonString);
-      } catch (e) {
-        console.error("JSON Parse Error:", e);
-        throw new Error("Invalid JSON generated");
-      }
-
-      // Validate and Normalize
-      const normalizedData = normalizeResponse(json);
-
-      return {
-        success: true,
-        data: normalizedData,
-        thinking: {
-          enhancedPrompt: `Used model: ${modelName}`
-        }
-      };
-
-    } catch (error: any) {
-      console.warn(`Model ${modelName} failed:`, error.message);
-      lastError = error;
-
-      // If it's NOT a 404/Not Found, it might be a real error (like quota), so maybe don't retry?
-      // But for robustness, we'll traverse the list unless it's an Auth error.
-      const msg = error.message || "";
-      if (msg.includes("API_KEY") || msg.includes("401")) {
-        return { success: false, error: `Authentication Error: ${msg}` };
-      }
-
-      // If 404 or other generic error, continue to next model
-      continue;
-    }
-  }
-
-  // If we get here, all models failed
-  const msg = lastError?.message || "Unknown error";
-  return { success: false, error: `All models failed. Last error: ${msg}` };
-}
-
-export async function checkConnection(): Promise<{ success: true; message: string } | { success: false; error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return { success: false, error: "GEMINI_API_KEY is missing (server-side check)" };
+  // Select Model
+  // If image -> Use Vision model
+  // If text -> Use most powerful text model
+  let modelName = "llama-3.3-70b-versatile";
+  if (imageBase64) {
+    modelName = "llama-3.2-90b-vision-preview";
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use cheapest/fastest model for check
-    const result = await model.generateContent("Test connection");
-    const response = await result.response;
-    return { success: true, message: "Connected: " + response.text().substring(0, 20) };
+    console.log(`Attempting generation with Groq model: ${modelName}`);
+
+    const systemInstruction = `${SYSTEM_PROMPT}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.`;
+    const userContent = `Style Preference: ${style}\n\nUser Request: ${prompt}`;
+
+    const messages: any[] = [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: userContent }
+    ];
+
+    if (imageBase64) {
+      // Groq Vision Format
+      const base64Data = imageBase64.split(',')[1] || imageBase64;
+      messages[1] = {
+        role: "user",
+        content: [
+          { type: "text", text: userContent + "\n\nReplicate the attached image design." },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${base64Data}`
+            }
+          }
+        ]
+      };
+    }
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: messages,
+      model: modelName,
+      temperature: 0.1,
+      max_tokens: 8000,
+      top_p: 1,
+      stream: false,
+      response_format: { type: "json_object" } // Force JSON
+    });
+
+    const content = chatCompletion.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content received from Groq");
+    }
+
+    let json;
+    try {
+      json = JSON.parse(content);
+    } catch (e) {
+      console.error("JSON Parse Error:", e);
+      throw new Error("Invalid JSON generated");
+    }
+
+    // Validate and Normalize
+    const normalizedData = normalizeResponse(json);
+
+    return {
+      success: true,
+      data: normalizedData,
+      thinking: {
+        enhancedPrompt: `Used model: ${modelName}`
+      }
+    };
+
   } catch (error: any) {
-    console.error("Connection Check Failed:", error);
-    return { success: false, error: error.message || "Connection failed" };
+    console.warn(`Groq Generation failed:`, error.message);
+    const msg = error.message || "Unknown error";
+    return { success: false, error: `Groq Error: ${msg}` };
+  }
+}
+
+// Kept for backward compatibility imports, but updated logic
+export async function checkConnection(): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  try {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return { success: false, error: "Missing GROQ_API_KEY" };
+
+    const groq = new Groq({ apiKey });
+    await groq.chat.completions.create({
+      messages: [{ role: "user", content: "Test" }],
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 5
+    });
+    return { success: true, message: "Connected to Llama 3 via Groq" };
+  } catch (e: any) {
+    return { success: false, error: e.message };
   }
 }
