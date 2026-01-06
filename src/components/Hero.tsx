@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { toast } from 'sonner';
 
+import { useClerk, useUser, UserButton } from '@clerk/nextjs';
+
 interface HeroProps {
     hasStarted: boolean;
     input: string;
@@ -14,6 +16,8 @@ interface HeroProps {
     setSelectedImage: (value: string | null) => void;
     fileInputRef: any;
     handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onOpenDiscover?: () => void;
+    isLoading?: boolean;
 }
 
 export function Hero({
@@ -24,8 +28,13 @@ export function Hero({
     selectedImage,
     setSelectedImage,
     fileInputRef,
-    handleFileSelect
+    handleFileSelect,
+    onOpenDiscover,
+    isLoading = false
 }: HeroProps) {
+    const { openSignIn, openSignUp } = useClerk();
+    const { isSignedIn } = useUser();
+
     return (
         <AnimatePresence>
             {!hasStarted && (
@@ -40,34 +49,30 @@ export function Hero({
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-blue-500 flex items-center justify-center text-white">
                                 <Sparkles className="w-5 h-5" />
                             </div>
-                            <span>
-                                <span className="text-pink-400">RE</span>
-                                <span className="text-cyan-400">Vision</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500">
+                                REVision
                             </span>
                         </div>
                         <nav className="hidden md:flex gap-8 text-sm font-medium text-muted-foreground">
-                            <button onClick={() => toast.info("Solutions coming soon!")} className="hover:text-foreground transition-colors">Solutions</button>
+                            {/* <button onClick={() => toast.info("Solutions coming soon!")} className="hover:text-foreground transition-colors">Solutions</button>
                             <button onClick={() => toast.info("Enterprise coming soon!")} className="hover:text-foreground transition-colors">Enterprise</button>
-                            <button onClick={() => toast.info("Pricing coming soon!")} className="hover:text-foreground transition-colors">Pricing</button>
-                            <button onClick={() => toast.info("Community coming soon!")} className="hover:text-foreground transition-colors">Community</button>
+                            <button onClick={() => toast.info("Pricing coming soon!")} className="hover:text-foreground transition-colors">Pricing</button> */}
+                            <button onClick={onOpenDiscover} className="hover:text-foreground transition-colors">Community</button>
                         </nav>
-                        <div className="flex gap-4">
-                            <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => toast.info("Login coming soon!")}>Log in</Button>
-                            <Button className="rounded-full px-6" onClick={() => toast.info("Sign up coming soon!")}>Get started</Button>
+                        <div className="flex gap-4 items-center">
+                            {!isSignedIn ? (
+                                <>
+                                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => openSignIn()}>Log in</Button>
+                                    <Button className="rounded-full px-6" onClick={() => openSignUp()}>Get started</Button>
+                                </>
+                            ) : (
+                                <UserButton afterSignOutUrl="/" />
+                            )}
                         </div>
                     </header>
 
                     {/* Hero Content */}
                     <div className="text-center max-w-3xl px-6 -mt-20">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6"
-                        >
-                            <span className="bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-sm">New</span>
-                            Themes & Visual edits <span className="text-muted-foreground">→</span>
-                        </motion.div>
 
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
@@ -75,7 +80,7 @@ export function Hero({
                             transition={{ delay: 0.3 }}
                             className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
                         >
-                            Build something <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500">RE-Vision</span>
+                            Let's <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500">Revision</span>
                         </motion.h1>
 
                         <motion.p
@@ -94,7 +99,7 @@ export function Hero({
                             transition={{ delay: 0.5 }}
                             className="relative max-w-2xl mx-auto w-full"
                         >
-                            <div className="glass-input rounded-2xl p-2 flex flex-col gap-2 transition-all focus-within:ring-2 ring-primary/20">
+                            <div className={`glass-input rounded-2xl p-2 flex flex-col gap-2 ${isLoading ? 'loading' : ''}`}>
                                 <textarea
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}

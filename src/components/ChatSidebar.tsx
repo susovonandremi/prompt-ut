@@ -1,11 +1,13 @@
 import React from 'react';
-import { Sparkles, MessageSquare, Globe, Paperclip, X, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ThinkingProcess, type ThinkingStep } from '@/components/ThinkingProcess';
+import { MessageSquare, Globe, Sparkles, X, Paperclip, Send, ThumbsUp, ThumbsDown, Download } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import Image from 'next/image';
+import { ThinkingProcess, ThinkingStep } from './ThinkingProcess';
+import { toggleVote } from '@/app/actions';
+import { toast } from 'sonner';
 
 export interface Message {
     id: string;
@@ -31,9 +33,11 @@ interface ChatSidebarProps {
     handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
     hubPosts: any[];
     scrollRef: any;
+    activeTab?: string;
+    onTabChange?: (tab: string) => void;
 }
 
-export function ChatSidebar({
+export const ChatSidebar = React.memo(function ChatSidebar({
     hasStarted,
     messages,
     setMessages,
@@ -47,24 +51,35 @@ export function ChatSidebar({
     fileInputRef,
     handleFileSelect,
     hubPosts,
-    scrollRef
+    scrollRef,
+    activeTab = "chat",
+    onTabChange
 }: ChatSidebarProps) {
     return (
         <div className={`w-[400px] flex flex-col border-r bg-muted/30 backdrop-blur-xl transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <div className="p-4 border-b bg-background/50 backdrop-blur">
-                <h1 className="font-semibold flex items-center gap-2 mb-4">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    AI Designer
-                </h1>
-                <Tabs defaultValue="chat" className="w-full">
-                    <TabsList className="w-full grid grid-cols-2 bg-muted/50">
+            <div className="flex-1 flex flex-col min-h-0">
+                <div className="p-4 border-b bg-background/50 backdrop-blur flex-shrink-0">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="font-bold flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-blue-500 flex items-center justify-center text-white">
+                            <Sparkles className="w-4 h-4" />
+                        </div>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500 text-lg">
+                            REVision
+                        </span>
+                    </button>
+                </div>
+                <Tabs value={activeTab} onValueChange={onTabChange} className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="w-full grid grid-cols-2 bg-muted/50 mx-4 mt-2 flex-shrink-0" style={{ width: 'calc(100% - 2rem)' }}>
                         <TabsTrigger value="chat" className="gap-2 data-[state=active]:bg-background"><MessageSquare className="w-4 h-4" /> Chat</TabsTrigger>
                         <TabsTrigger value="discover" className="gap-2 data-[state=active]:bg-background"><Globe className="w-4 h-4" /> Discover</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="chat" className="flex-1 flex flex-col h-[calc(100vh-140px)] mt-0">
-                        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                            <div className="space-y-6">
+                    <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 mt-0">
+                        <div className="flex-1 overflow-y-auto p-4 flex flex-col" ref={scrollRef}>
+                            <div className="mt-auto space-y-6">
                                 {messages.map((msg) => (
                                     <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                         {msg.image && (
@@ -91,7 +106,7 @@ export function ChatSidebar({
                                     </div>
                                 )}
                             </div>
-                        </ScrollArea>
+                        </div>
 
                         <div className="p-4 border-t bg-background/50 backdrop-blur">
                             {selectedImage && (
@@ -131,30 +146,87 @@ export function ChatSidebar({
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="discover" className="flex-1 h-[calc(100vh-140px)] mt-0">
-                        <ScrollArea className="h-full p-4">
+                    <TabsContent value="discover" className="flex-1 flex flex-col min-h-0 mt-0">
+                        <div className="flex-1 overflow-y-auto p-4">
                             <div className="space-y-4">
                                 {hubPosts.map((post) => (
-                                    <div key={post.id} className="border rounded-lg p-3 bg-card hover:bg-accent/50 cursor-pointer transition-colors" onClick={() => {
-                                        setMessages(prev => [...prev, {
-                                            id: Date.now().toString(),
-                                            role: 'assistant',
-                                            content: `Loaded design: ${post.prompt}`,
-                                            ui: post.dsl
-                                        }]);
-                                    }}>
-                                        <div className="text-sm font-medium line-clamp-2">{post.prompt}</div>
-                                        <div className="text-xs text-muted-foreground mt-2 flex justify-between">
-                                            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                                            <span>by {post.user?.handle || 'User'}</span>
+                                    <div key={post.id} className="border rounded-xl p-4 bg-card hover:bg-accent/5 transition-all group">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-xs font-bold text-primary">
+                                                    {post.user?.handle?.[0]?.toUpperCase() || 'U'}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium">{post.user?.handle || 'Anonymous'}</div>
+                                                    <div className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs font-normal opacity-50">
+                                                {post.style}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <p className="text-sm line-clamp-2 text-foreground/90 font-medium leading-relaxed">
+                                                {post.prompt}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+                                            <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className={`h-7 px-2 gap-1 text-xs ${post.hasVoted === 'UP' ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:text-green-500'}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleVote(post.id, 'UP');
+                                                        // Optimistic update could go here
+                                                    }}
+                                                >
+                                                    <ThumbsUp className="w-3 h-3" />
+                                                    <span>{post.upvoteCount || 0}</span>
+                                                </Button>
+                                                <div className="w-px h-4 bg-border/50" />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className={`h-7 px-2 gap-1 text-xs ${post.hasVoted === 'DOWN' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground hover:text-red-500'}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleVote(post.id, 'DOWN');
+                                                    }}
+                                                >
+                                                    <ThumbsDown className="w-3 h-3" />
+                                                    <span>{post.downvoteCount || 0}</span>
+                                                </Button>
+                                            </div>
+
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="h-8 text-xs gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                    setMessages(prev => [...prev, {
+                                                        id: Date.now().toString(),
+                                                        role: 'assistant',
+                                                        content: `Loaded design: ${post.prompt}`,
+                                                        ui: post.dsl
+                                                    }]);
+                                                    toast.success("Design loaded!");
+                                                }}
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                Load
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </ScrollArea>
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>
         </div>
     );
-}
+});

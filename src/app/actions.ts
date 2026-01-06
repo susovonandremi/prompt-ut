@@ -1,14 +1,12 @@
 'use server'
-'use server'
 
-// Ensure this path matches where you created the file in step 2
-import { prisma } from "../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 // Save a generated UI to the Hub
 export async function saveToHub(prompt: string, dsl: any, style: string) {
-  const { userId } = await auth(); // Ensure auth is awaited if using recent Clerk versions
+  const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
   // Sync Clerk user to local DB if not exists
@@ -36,28 +34,88 @@ export async function saveToHub(prompt: string, dsl: any, style: string) {
 }
 
 export async function getHubPosts() {
+  const { userId } = await auth();
+
   const posts = await prisma.post.findMany({
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: {
       user: true,
-      _count: {
-        select: { votes: true }
-      }
+      votes: userId ? {
+        where: { userId }
+      } : false
     }
   });
-  return posts;
+
+  // Transform to include hasVoted status for the current user
+  return posts.map(post => ({
+    ...post,
+    hasVoted: userId && post.votes?.length ? post.votes[0].type : null
+  }));
 }
 
 export async function toggleVote(postId: string, direction: "UP" | "DOWN") {
   const { userId } = await auth();
-  if (!userId) return;
+  if (!userId) throw new Error("Unauthorized");
 
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) return;
+  // Check existing vote
+  const existingVote = await prisma.vote.findUnique({
+    where: {
+      userId_postId: {
+        userId,
+        postId
+      }
+    }
+  });
 
-  // Placeholder for vote logic
-  console.log("Voting:", direction, "on", postId);
+  if (existingVote) {
+    if (existingVote.type === direction) {
+      // Remove vote (toggle off)
+      await prisma.$transaction([
+        prisma.vote.delete({
+          where: { userId_postId: { userId, postId } }
+        }),
+        prisma.post.update({
+          where: { id: postId },
+          data: {
+            [direction === "UP" ? "upvoteCount" : "downvoteCount"]: { decrement: 1 }
+          }
+        })
+      ]);
+    } else {
+      // Change vote direction
+      await prisma.$transaction([
+        prisma.vote.update({
+          where: { userId_postId: { userId, postId } },
+          data: { type: direction }
+        }),
+        prisma.post.update({
+          where: { id: postId },
+          data: {
+            [direction === "UP" ? "upvoteCount" : "downvoteCount"]: { increment: 1 },
+            [direction === "UP" ? "downvoteCount" : "upvoteCount"]: { decrement: 1 }
+          }
+        })
+      ]);
+    }
+  } else {
+    // New vote
+    await prisma.$transaction([
+      prisma.vote.create({
+        data: {
+          userId,
+          postId,
+          type: direction
+        }
+      }),
+      prisma.post.update({
+        where: { id: postId },
+        data: {
+          [direction === "UP" ? "upvoteCount" : "downvoteCount"]: { increment: 1 }
+        }
+      })
+    ]);
+  }
 
   revalidatePath('/');
 }

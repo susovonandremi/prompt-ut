@@ -10,6 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import * as Icons from 'lucide-react';
+import {
+  LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+} from 'recharts';
 import type { UIDSL, StyleProps } from '../lib/ui-schema';
 import {
   spacingClasses,
@@ -63,6 +67,10 @@ export function RenderNode({ node, depth = 0 }: RenderNodeProps) {
       return <RenderAvatar node={node} />;
     case 'separator':
       return <RenderSeparator node={node} />;
+    case 'chart':
+      return <RenderChart node={node} />;
+    case 'table':
+      return <RenderTable node={node} />;
     default:
       return null;
   }
@@ -182,17 +190,22 @@ function RenderText({ node }: { node: UIDSL }) {
   if (node.type !== 'text') return null;
 
   const variant = node.props.variant || 'body';
-  const typo = typography[variant];
+  const typo = typography[variant as keyof typeof typography] || typography.body;
 
   const alignClass = node.props.align === 'center' ? 'text-center' :
     node.props.align === 'right' ? 'text-right' : 'text-left';
+
+  // Specific color overrides for success/destructive variants
+  const colorClass = variant === 'success' ? 'text-emerald-500' :
+    variant === 'destructive' ? 'text-red-500' :
+      (typo as any).color ?? 'text-foreground';
 
   const className = cn(
     typo.size,
     typo.weight,
     typo.leading,
     (typo as any).tracking ?? '',
-    (typo as any).color ?? 'text-foreground',
+    colorClass,
     alignClass
   );
 
@@ -330,7 +343,24 @@ function RenderIcon({ node }: { node: UIDSL }) {
 
 function RenderBadge({ node }: { node: UIDSL }) {
   if (node.type !== 'badge') return null;
-  return <Badge variant={node.props.variant || 'default'}>{node.props.label}</Badge>;
+
+  const variant = node.props.variant || 'default';
+
+  // Map custom variants to Shadcn variants or apply custom classes
+  let className = "";
+  let shadcnVariant: "default" | "secondary" | "outline" | "destructive" = "default";
+
+  if (variant === 'success') {
+    className = "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 border-emerald-500/20";
+    shadcnVariant = "outline";
+  } else if (variant === 'warning') {
+    className = "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 border-amber-500/20";
+    shadcnVariant = "outline";
+  } else {
+    shadcnVariant = variant as any;
+  }
+
+  return <Badge variant={shadcnVariant} className={className}>{node.props.label}</Badge>;
 }
 
 function RenderAvatar({ node }: { node: UIDSL }) {
@@ -350,4 +380,63 @@ function RenderAvatar({ node }: { node: UIDSL }) {
 function RenderSeparator({ node }: { node: UIDSL }) {
   if (node.type !== 'separator') return null;
   return <Separator orientation={node.props.orientation || 'horizontal'} className="my-4" />;
+}
+
+function RenderChart({ node }: { node: UIDSL }) {
+  if (node.type !== 'chart') return null;
+
+  const { type, data, xAxisKey, series, height } = node.props;
+  const ChartComponent = type === 'bar' ? BarChart : type === 'area' ? AreaChart : LineChart;
+
+  return (
+    <div className="w-full" style={{ height: height || 300 }}>
+      {node.props.title && <h3 className="text-sm font-medium mb-4">{node.props.title}</h3>}
+      <ResponsiveContainer width="100%" height="100%">
+        <ChartComponent data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+          <XAxis dataKey={xAxisKey} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+          <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+          <Tooltip
+            contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px' }}
+            itemStyle={{ color: '#e5e7eb' }}
+          />
+          {series.map((s: any, i: number) => (
+            type === 'bar' ? <Bar key={i} dataKey={s.key} fill={s.color} radius={[4, 4, 0, 0]} /> :
+              type === 'area' ? <Area key={i} type="monotone" dataKey={s.key} stroke={s.color} fill={s.color} fillOpacity={0.2} /> :
+                <Line key={i} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2} dot={false} />
+          ))}
+        </ChartComponent>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RenderTable({ node }: { node: UIDSL }) {
+  if (node.type !== 'table') return null;
+
+  return (
+    <div className="w-full overflow-auto">
+      <table className="w-full text-sm text-left">
+        <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+          <tr>
+            {node.props.headers.map((h: string, i: number) => (
+              <th key={i} className="px-4 py-3 font-medium">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {node.props.rows.map((row: any, i: number) => (
+            <tr key={i} className="border-b border-border hover:bg-muted/50 transition-colors">
+              {node.props.headers.map((h: string, j: number) => (
+                <td key={j} className="px-4 py-3">
+                  {/* Basic auto-formatting for cell data */}
+                  {String(row[h] || row[h.toLowerCase()] || '-')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }

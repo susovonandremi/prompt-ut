@@ -7,10 +7,10 @@ export type SpacingKey = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 export type DirectionKey = "vertical" | "horizontal" | "grid";
 export type AlignKey = "start" | "center" | "end" | "between";
 export type MaxWidthKey = "sm" | "md" | "lg" | "xl" | "2xl" | "full";
-export type TextVariant = "h1" | "h2" | "h3" | "h4" | "body" | "small" | "muted" | "label";
+export type TextVariant = "h1" | "h2" | "h3" | "h4" | "body" | "small" | "muted" | "label" | "success" | "destructive";
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 export type CardVariant = "default" | "elevated" | "glass" | "flat" | "bordered";
-export type BadgeVariant = "default" | "secondary" | "outline" | "destructive";
+export type BadgeVariant = "default" | "secondary" | "outline" | "destructive" | "success" | "warning";
 
 // New Style Props
 export interface StyleProps {
@@ -121,6 +121,25 @@ export type UIDSL =
     props: {
       orientation?: "horizontal" | "vertical";
     };
+  }
+  | {
+    type: "chart";
+    props: {
+      type: "line" | "bar" | "area" | "pie";
+      title?: string;
+      data: Record<string, any>[];
+      xAxisKey: string;
+      series: { key: string; color?: string; name?: string }[];
+      height?: string;
+    };
+  }
+  | {
+    type: "table";
+    props: {
+      headers: string[];
+      rows: Record<string, any>[];
+      variant?: "default" | "dense" | "striped";
+    };
   };
 
 export type VariantsResponse = {
@@ -151,14 +170,15 @@ export function normalizeNode(node: any): UIDSL {
     "span": "text",
     "label": "text",
     "img": "image",
-    "field": "input"
+    "field": "input",
+    "graph": "chart"
   };
 
   if (typeMap[rawType]) rawType = typeMap[rawType];
 
   const validTypes = [
     "container", "card", "text", "button", "input", "textarea",
-    "image", "icon", "badge", "avatar", "separator"
+    "image", "icon", "badge", "avatar", "separator", "chart", "table"
   ];
 
   const type = validTypes.includes(rawType) ? rawType : "container";
@@ -272,7 +292,7 @@ export function normalizeNode(node: any): UIDSL {
         type: "badge",
         props: {
           label: node.props?.label ?? node.label ?? "Badge",
-          variant: ["default", "secondary", "outline", "destructive"].includes(node.props?.variant) ? node.props.variant : "default",
+          variant: ["default", "secondary", "outline", "destructive", "success", "warning"].includes(node.props?.variant) ? node.props.variant : "default",
         },
       };
     }
@@ -293,6 +313,31 @@ export function normalizeNode(node: any): UIDSL {
         type: "separator",
         props: {
           orientation: node.props?.orientation === "vertical" ? "vertical" : "horizontal",
+        },
+      };
+    }
+
+    case "chart": {
+      return {
+        type: "chart",
+        props: {
+          type: ["line", "bar", "area", "pie"].includes(node.props?.type) ? node.props.type : "line",
+          title: node.props?.title,
+          data: Array.isArray(node.props?.data) ? node.props.data : [],
+          xAxisKey: node.props?.xAxisKey ?? "name",
+          series: Array.isArray(node.props?.series) ? node.props.series : [{ key: "value", color: "#8884d8" }],
+          height: node.props?.height ?? "300px",
+        },
+      };
+    }
+
+    case "table": {
+      return {
+        type: "table",
+        props: {
+          headers: Array.isArray(node.props?.headers) ? node.props.headers : [],
+          rows: Array.isArray(node.props?.rows) ? node.props.rows : [],
+          variant: ["default", "dense", "striped"].includes(node.props?.variant) ? node.props.variant : "default",
         },
       };
     }
@@ -336,7 +381,7 @@ function normalizeAlign(val: any): AlignKey | undefined {
 
 function normalizeTextVariant(val: any): TextVariant | undefined {
   if (!val) return undefined;
-  const allowed: TextVariant[] = ["h1", "h2", "h3", "h4", "body", "small", "muted", "label"];
+  const allowed: TextVariant[] = ["h1", "h2", "h3", "h4", "body", "small", "muted", "label", "success", "destructive"];
   return allowed.includes(val) ? val : undefined;
 }
 

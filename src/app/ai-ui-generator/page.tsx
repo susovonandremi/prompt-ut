@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useUser, useClerk } from '@clerk/nextjs';
 import { ThinkingStep } from '@/components/ThinkingProcess';
 import { generateUI } from '@/lib/ai-service';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { PreviewArea } from '@/components/PreviewArea';
 
 export default function ChatPage() {
   const { user } = useUser();
+  const { openSignIn } = useClerk();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +22,8 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasStarted, setHasStarted] = useState(false);
+  const [activeTab, setActiveTab] = useState("chat");
+  const [isUploading, setIsUploading] = useState(false);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -34,7 +37,7 @@ export default function ChatPage() {
     getHubPosts().then(setHubPosts).catch(console.error);
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -43,9 +46,9 @@ export default function ChatPage() {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if ((!input.trim() && !selectedImage) || isLoading) return;
 
     if (!hasStarted) setHasStarted(true);
@@ -112,7 +115,46 @@ export default function ChatPage() {
       setIsLoading(false);
       setCurrentThinking([]);
     }
-  };
+  }, [input, selectedImage, isLoading, hasStarted, user]);
+
+  const handleUpload = useCallback(async () => {
+    // We need to access the latest messages state, but since we can't easily access it inside useCallback without adding it to deps (which causes re-creation),
+    // we'll rely on the fact that this function is recreated when messages change.
+    // Ideally, we'd pass the message to upload as an argument, but the PreviewArea just calls onUpload.
+    // For now, adding messages to dependency array is acceptable as upload isn't a high-frequency action.
+
+    // Actually, to avoid stale closures, we should probably pass the UI to upload from the child or use a ref for messages if we wanted to avoid re-creation.
+    // But given the frequency of upload, re-creating this function when messages change is fine.
+
+    const lastUiMessage = [...messages].reverse().find(m => m.ui);
+    if (!lastUiMessage) return;
+
+    if (!user) {
+      toast.info("Please sign in to upload");
+      openSignIn();
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      const promptText = lastUserMsg?.content || "Generated UI";
+
+      await saveToHub(promptText, lastUiMessage.ui, "modern");
+      toast.success("Successfully uploaded to Hub!");
+      getHubPosts().then(setHubPosts);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to upload to Hub");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [messages, user, openSignIn]);
+
+  const handleOpenDiscover = useCallback(() => {
+    setActiveTab("discover");
+    setHasStarted(true);
+  }, []);
 
   const lastUiMessage = [...messages].reverse().find(m => m.ui);
 
@@ -127,6 +169,8 @@ export default function ChatPage() {
         setSelectedImage={setSelectedImage}
         fileInputRef={fileInputRef}
         handleFileSelect={handleFileSelect}
+        onOpenDiscover={handleOpenDiscover}
+        isLoading={isLoading}
       />
 
       <div className={`flex w-full h-full transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -145,9 +189,15 @@ export default function ChatPage() {
           handleFileSelect={handleFileSelect}
           hubPosts={hubPosts}
           scrollRef={scrollRef}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         />
 
-        <PreviewArea lastUiMessage={lastUiMessage} />
+        <PreviewArea
+          lastUiMessage={lastUiMessage}
+          onUpload={handleUpload}
+          isUploading={isUploading}
+        />
       </div>
     </div>
   );

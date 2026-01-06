@@ -57,17 +57,22 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
     const result = await model.generateContent(parts);
     const text = result.response.text();
 
-    // Extract JSON if wrapped in markdown
-    const jsonString = text.substring(
-      text.indexOf("{"),
-      text.lastIndexOf("}") + 1
-    );
+    // Extract JSON if wrapped in markdown or has extra text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonString = jsonMatch ? jsonMatch[0] : null;
 
     if (!jsonString) {
       throw new Error("No JSON found in response");
     }
 
-    const json = JSON.parse(jsonString);
+    let json;
+    try {
+      json = JSON.parse(jsonString);
+    } catch (e) {
+      // Try to fix common JSON errors if needed, or just fail
+      console.error("JSON Parse Error:", e);
+      throw new Error("Generated content was not valid JSON");
+    }
 
     // Validate and Normalize
     const normalizedData = normalizeResponse(json);
