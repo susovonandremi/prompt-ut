@@ -112,9 +112,28 @@ export default function ChatPage() {
           .catch(e => console.error("Failed to save", e));
       }
 
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to generate UI");
-      console.error(error);
+    } catch (error: any) {
+      let errorMessage = "Failed to generate UI";
+
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object') {
+        try {
+          errorMessage = JSON.stringify(error) || "Unknown Error Object";
+        } catch {
+          errorMessage = "Unserializable Error";
+        }
+      }
+
+      // Append a clear instruction if it looks like a timeout or network error
+      if (errorMessage.includes("digest") || errorMessage.includes("fetch")) {
+        errorMessage += " (Network/Timeout Error - Vercel logs might show more)";
+      }
+
+      toast.error(errorMessage);
+      console.error("UI Gen Error:", error);
     } finally {
       setIsLoading(false);
       setCurrentThinking([]);
