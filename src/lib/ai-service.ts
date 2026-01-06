@@ -5,12 +5,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { normalizeResponse } from "./ui-schema";
 import { SYSTEM_PROMPT, PROMPT_ENHANCER_SYSTEM_PROMPT, buildUserPrompt } from "./gemini-prompt";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey || '');
 
-const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
-});
 
 export interface GenerationResult {
   data: any;
@@ -24,9 +19,16 @@ export type WrappedGenerationResult =
   | { success: false; error: string };
 
 export async function generateUI(prompt: string, style: string, imageBase64?: string): Promise<WrappedGenerationResult> {
+  // Initialize specific for this request to handle env vars safely
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return { success: false, error: "GEMINI_API_KEY is not set in environment variables" };
+    return { success: false, error: "GEMINI_API_KEY is not set in environment variables (server-side)" };
   }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
+  });
 
   try {
     // 1. Enhance Prompt
