@@ -196,6 +196,33 @@ export default function ChatPage() {
         isLoading={isLoading}
       />
 
+      {/* Debug Connection Button */}
+      {!hasStarted && (
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={async () => {
+              const toastId = toast.loading("Testing Gemini Connection...");
+              try {
+                const { checkConnection } = await import('@/lib/ai-service');
+                const result = await checkConnection();
+                if (result.success) {
+                  toast.success("API Key Valid! " + result.message);
+                } else {
+                  toast.error("API Key Invalid: " + result.error);
+                }
+              } catch (e: any) {
+                toast.error("Connection Check Failed: " + e.message);
+              } finally {
+                toast.dismiss(toastId);
+              }
+            }}
+            className="text-xs px-3 py-1 bg-zinc-800 text-zinc-400 rounded hover:bg-zinc-700 border border-zinc-700"
+          >
+            Test API Key
+          </button>
+        </div>
+      )}
+
       <div className={`flex w-full h-full transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <ChatSidebar
           hasStarted={hasStarted}

@@ -100,3 +100,21 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
     return { success: false, error: `Generation Failed: ${msg}` };
   }
 }
+
+export async function checkConnection(): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: "GEMINI_API_KEY is missing (server-side check)" };
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use cheapest/fastest model for check
+    const result = await model.generateContent("Test connection");
+    const response = await result.response;
+    return { success: true, message: "Connected: " + response.text().substring(0, 20) };
+  } catch (error: any) {
+    console.error("Connection Check Failed:", error);
+    return { success: false, error: error.message || "Connection failed" };
+  }
+}
