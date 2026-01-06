@@ -17,6 +17,23 @@ export async function GET() {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
 
+        // 1. Diagnostic: List all available models for this key
+        let availableModels: string[] = [];
+        try {
+            console.log("Debug: Fetching available models...");
+            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            const listData = await listRes.json();
+
+            if (listData.models) {
+                availableModels = listData.models.map((m: any) => m.name.replace('models/', ''));
+                console.log("Debug: Available Models:", availableModels);
+            } else {
+                console.warn("Debug: Could not list models:", listData);
+            }
+        } catch (e: any) {
+            console.error("Debug: Failed to list models:", e);
+        }
+
         // Expanded list including 8b and variants
         const models = [
             "gemini-2.0-flash-exp",
