@@ -109,7 +109,7 @@ export default function ChatPage() {
       }
 
     } catch (error) {
-      toast.error("Failed to generate UI");
+      toast.error(error instanceof Error ? error.message : "Failed to generate UI");
       console.error(error);
     } finally {
       setIsLoading(false);

@@ -84,8 +84,13 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
       }
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Generation failed:", error);
-    throw new Error("Failed to generate UI. Please try again.");
+    // Rethrow specific errors (like missing API key) directly
+    if (error.message && (error.message.includes("API_KEY") || error.message.includes("quota"))) {
+      throw error;
+    }
+    // For other errors, include the original message for debugging
+    throw new Error(`Failed to generate UI: ${error.message || "Unknown error"}`);
   }
 }
