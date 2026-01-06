@@ -48,18 +48,24 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
       console.log(`Attempting generation with model: ${modelName}`);
       const model = genAI.getGenerativeModel({ model: modelName });
 
-      // Retry helper (429 handling)
+      // Retry helper (429 handling with Exponential Backoff)
       const generateWithRetry = async () => {
-        try {
-          return await model.generateContent(parts);
-        } catch (e: any) {
-          if (e.message?.includes("429") || e.status === 429) {
-            console.log(`Debug: Hit 429 on ${modelName}, retrying in 2s...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+        let attempts = 0;
+        while (attempts < 3) {
+          try {
             return await model.generateContent(parts);
+          } catch (e: any) {
+            if (e.message?.includes("429") || e.status === 429) {
+              attempts++;
+              const delay = Math.pow(2, attempts + 1) * 1000; // 4s, 8s, 16s
+              console.log(`Debug: Hit 429 on ${modelName}. Retry ${attempts}/3 in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            throw e;
           }
-          throw e;
         }
+        throw new Error("Failed after 3 retries (Rate Limited)");
       };
 
       // 1. Enhance Prompt (SKIPPED to prevent Vercel 10s Timeout)
