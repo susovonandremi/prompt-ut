@@ -31,7 +31,9 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
   });
 
   try {
-    // 1. Enhance Prompt
+    // 1. Enhance Prompt (SKIPPED to prevent Vercel 10s Timeout)
+    const enhancedPrompt = prompt;
+    /* 
     const enhancerParts = [
       { text: PROMPT_ENHANCER_SYSTEM_PROMPT },
       { text: `User Request: ${prompt}` }
@@ -39,6 +41,7 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
 
     const enhancerResult = await model.generateContent(enhancerParts);
     const enhancedPrompt = enhancerResult.response.text();
+    */
 
     // 2. Generate UI
     const systemInstruction = `${SYSTEM_PROMPT}\n\nIMPORTANT: The user may provide an image. Analyze it and replicate its layout, content, and style using the DSL.`;
