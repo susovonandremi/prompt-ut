@@ -81,6 +81,10 @@ export default function ChatPage() {
       // Pass image to generateUI
       const result = await generateUI(userMsg.content, "modern", userMsg.image);
 
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
       // Update thinking with real data
       setCurrentThinking(s => s.map(step => ({ ...step, status: 'completed' })));
 

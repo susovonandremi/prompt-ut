@@ -19,9 +19,13 @@ export interface GenerationResult {
   };
 }
 
-export async function generateUI(prompt: string, style: string, imageBase64?: string): Promise<GenerationResult> {
+export type WrappedGenerationResult =
+  | { success: true; data: any; thinking: { enhancedPrompt: string } }
+  | { success: false; error: string };
+
+export async function generateUI(prompt: string, style: string, imageBase64?: string): Promise<WrappedGenerationResult> {
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set");
+    return { success: false, error: "GEMINI_API_KEY is not set in environment variables" };
   }
 
   try {
@@ -62,22 +66,22 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
     const jsonString = jsonMatch ? jsonMatch[0] : null;
 
     if (!jsonString) {
-      throw new Error("No JSON found in response");
+      return { success: false, error: "No JSON found in AI response" };
     }
 
     let json;
     try {
       json = JSON.parse(jsonString);
     } catch (e) {
-      // Try to fix common JSON errors if needed, or just fail
       console.error("JSON Parse Error:", e);
-      throw new Error("Generated content was not valid JSON");
+      return { success: false, error: "Generated content was not valid JSON" };
     }
 
     // Validate and Normalize
     const normalizedData = normalizeResponse(json);
 
     return {
+      success: true,
       data: normalizedData,
       thinking: {
         enhancedPrompt
@@ -86,11 +90,11 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
 
   } catch (error: any) {
     console.error("AI Generation failed:", error);
-    // Rethrow specific errors (like missing API key) directly
-    if (error.message && (error.message.includes("API_KEY") || error.message.includes("quota"))) {
-      throw error;
+    // Return explicit error message to client
+    const msg = error.message || "Unknown error";
+    if (msg.includes("API_KEY") || msg.includes("quota") || msg.includes("401") || msg.includes("403")) {
+      return { success: false, error: `Authentication Error: ${msg}` };
     }
-    // For other errors, include the original message for debugging
-    throw new Error(`Failed to generate UI: ${error.message || "Unknown error"}`);
+    return { success: false, error: `Generation Failed: ${msg}` };
   }
 }
