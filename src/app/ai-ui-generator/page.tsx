@@ -203,15 +203,17 @@ export default function ChatPage() {
             onClick={async () => {
               const toastId = toast.loading("Testing Gemini Connection...");
               try {
-                const { checkConnection } = await import('@/lib/ai-service');
-                const result = await checkConnection();
-                if (result.success) {
+                const res = await fetch('/api/debug/connection');
+                const result = await res.json();
+
+                if (res.ok && result.success) {
                   toast.success("API Key Valid! " + result.message);
                 } else {
-                  toast.error("API Key Invalid: " + result.error);
+                  toast.error("API Error: " + (result.error || result.message || "Unknown Failure"));
+                  console.error("API Debug Result:", result);
                 }
               } catch (e: any) {
-                toast.error("Connection Check Failed: " + e.message);
+                toast.error("Network Failed: " + e.message);
               } finally {
                 toast.dismiss(toastId);
               }
