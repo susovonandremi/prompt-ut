@@ -1,5 +1,6 @@
 'use client';
 
+// Client-only chart wrapper to avoid SSR issues with Recharts
 import React from 'react';
 import {
     LineChart, Line, BarChart, Bar, AreaChart, Area,
