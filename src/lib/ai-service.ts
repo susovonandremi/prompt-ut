@@ -48,6 +48,20 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
       console.log(`Attempting generation with model: ${modelName}`);
       const model = genAI.getGenerativeModel({ model: modelName });
 
+      // Retry helper (429 handling)
+      const generateWithRetry = async () => {
+        try {
+          return await model.generateContent(parts);
+        } catch (e: any) {
+          if (e.message?.includes("429") || e.status === 429) {
+            console.log(`Debug: Hit 429 on ${modelName}, retrying in 2s...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return await model.generateContent(parts);
+          }
+          throw e;
+        }
+      };
+
       // 1. Enhance Prompt (SKIPPED to prevent Vercel 10s Timeout)
       const enhancedPrompt = prompt;
 
@@ -71,7 +85,7 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
         parts.push({ text: "Replicate this image design as closely as possible using the DSL." });
       }
 
-      const result = await model.generateContent(parts);
+      const result = await generateWithRetry();
       const text = result.response.text();
 
       // Extract JSON

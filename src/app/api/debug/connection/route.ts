@@ -34,8 +34,22 @@ export async function GET() {
                 console.log("Debug: Trying model:", modelName);
                 const model = genAI.getGenerativeModel({ model: modelName });
 
+                // Helper to generate with retry for 429
+                const generateWithRetry = async () => {
+                    try {
+                        return await model.generateContent("Test");
+                    } catch (e: any) {
+                        if (e.message?.includes("429") || e.status === 429) {
+                            console.log(`Debug: Hit 429 on ${modelName}, retrying in 2s...`);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            return await model.generateContent("Test");
+                        }
+                        throw e;
+                    }
+                };
+
                 console.log("Debug: Generating content with", modelName);
-                const result = await model.generateContent("Test");
+                const result = await generateWithRetry();
                 const response = await result.response;
                 const text = response.text();
 
