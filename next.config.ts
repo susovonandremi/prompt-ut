@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
       // add any other domains Gemini returns
     ],
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;
