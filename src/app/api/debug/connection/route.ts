@@ -17,9 +17,17 @@ export async function GET() {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Try multiple models to find one that works
-        const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp"];
-        let lastError;
+        // Expanded list including 8b and variants
+        const models = [
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash-002",
+            "gemini-pro"
+        ];
+
+        const errors: string[] = [];
 
         for (const modelName of models) {
             try {
@@ -34,12 +42,17 @@ export async function GET() {
                 console.log("Debug: Success with", modelName);
                 return NextResponse.json({ success: true, message: `Connected using ${modelName}` });
             } catch (e: any) {
-                console.log(`Debug: Failed ${modelName}:`, e.message);
-                lastError = e;
+                const msg = `[${modelName}]: ${e.message}`;
+                console.log("Debug: Failed:", msg);
+                errors.push(msg);
             }
         }
 
-        throw lastError || new Error("All models failed");
+        // Return detailed failure report
+        return NextResponse.json({
+            success: false,
+            error: "All models failed. Details:\n" + errors.join("\n")
+        }, { status: 500 });
 
     } catch (error: any) {
         console.error("Debug: Connection Crash:", error);

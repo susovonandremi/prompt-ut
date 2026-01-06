@@ -27,11 +27,14 @@ export async function generateUI(prompt: string, style: string, imageBase64?: st
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  // Strategy: Try preferred model, then fallback to stable models if 404
+  // Strategy: Try preferred model, then fallback to stable models if 404/429
   const modelsToTry = [
     process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
     "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
+    "gemini-1.5-flash-002",
+    "gemini-1.5-pro-002",
     "gemini-pro"
   ];
 
