@@ -18,12 +18,17 @@ export async function POST(req: Request) {
     }
 
     // 3. Call Gemini via our robust service
-    const { data } = await generateUI(prompt, style);
+    const result = await generateUI(prompt, style);
+
+    if (!result.success) {
+      // Pass the actual error message from the service
+      throw new Error(result.error);
+    }
 
     // 4. Return standard response
     return NextResponse.json({
       version: "1",
-      variants: data.variants
+      variants: result.data.variants
     });
 
   } catch (error: any) {
