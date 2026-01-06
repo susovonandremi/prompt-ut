@@ -1,6 +1,6 @@
 'use client';
 
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -13,11 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import * as Icons from 'lucide-react';
 import type { UIDSL, StyleProps } from '../lib/ui-schema';
 
-// Dynamic import for recharts to avoid SSR issues
-const RechartsComponents = dynamic(
-  () => import('recharts').then((mod) => ({
-    default: ({ children, ...props }: any) => children(mod)
-  })),
+// Dynamic import for chart component to avoid SSR issues with recharts
+const ChartWrapper = dynamic(
+  () => import('./ChartWrapper').then(mod => mod.ChartWrapper),
   {
     ssr: false,
     loading: () => <div className="w-full h-[300px] bg-muted/50 animate-pulse rounded-lg flex items-center justify-center text-muted-foreground text-sm">Loading chart...</div>
@@ -393,37 +391,17 @@ function RenderSeparator({ node }: { node: UIDSL }) {
 function RenderChart({ node }: { node: UIDSL }) {
   if (node.type !== 'chart') return null;
 
-  const { type, data, xAxisKey, series, height } = node.props;
+  const { type, data, xAxisKey, series, height, title } = node.props;
 
   return (
-    <div className="w-full" style={{ height: height || 300 }}>
-      {node.props.title && <h3 className="text-sm font-medium mb-4">{node.props.title}</h3>}
-      <RechartsComponents>
-        {(recharts: any) => {
-          const { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = recharts;
-          const ChartComponent = type === 'bar' ? BarChart : type === 'area' ? AreaChart : LineChart;
-
-          return (
-            <ResponsiveContainer width="100%" height="100%">
-              <ChartComponent data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey={xAxisKey} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value: number) => `$${value}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px' }}
-                  itemStyle={{ color: '#e5e7eb' }}
-                />
-                {series.map((s: any, i: number) => (
-                  type === 'bar' ? <Bar key={i} dataKey={s.key} fill={s.color} radius={[4, 4, 0, 0]} /> :
-                    type === 'area' ? <Area key={i} type="monotone" dataKey={s.key} stroke={s.color} fill={s.color} fillOpacity={0.2} /> :
-                      <Line key={i} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2} dot={false} />
-                ))}
-              </ChartComponent>
-            </ResponsiveContainer>
-          );
-        }}
-      </RechartsComponents>
-    </div>
+    <ChartWrapper
+      type={type}
+      data={data}
+      xAxisKey={xAxisKey}
+      series={series}
+      height={height}
+      title={title}
+    />
   );
 }
 
