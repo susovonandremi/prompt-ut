@@ -197,33 +197,7 @@ export default function ChatPage() {
       />
 
       {/* Debug Connection Button */}
-      {!hasStarted && (
-        <div className="absolute top-4 right-4 z-50">
-          <button
-            onClick={async () => {
-              const toastId = toast.loading("Testing Gemini Connection...");
-              try {
-                const res = await fetch('/api/debug/connection');
-                const result = await res.json();
-
-                if (res.ok && result.success) {
-                  toast.success("API Key Valid! " + result.message);
-                } else {
-                  toast.error("API Error: " + (result.error || result.message || "Unknown Failure"));
-                  console.error("API Debug Result:", result);
-                }
-              } catch (e: any) {
-                toast.error("Network Failed: " + e.message);
-              } finally {
-                toast.dismiss(toastId);
-              }
-            }}
-            className="text-xs px-3 py-1 bg-zinc-800 text-zinc-400 rounded hover:bg-zinc-700 border border-zinc-700"
-          >
-            Test API Key
-          </button>
-        </div>
-      )}
+      {/* Debug Connection Button Removed */}
 
       <div className={`flex w-full h-full transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <ChatSidebar

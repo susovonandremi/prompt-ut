@@ -74,51 +74,14 @@ export const backgrounds = {
 } as const;
 
 export const typography = {
-  h1: {
-    size: 'text-4xl md:text-5xl lg:text-6xl',
-    weight: 'font-bold',
-    tracking: 'tracking-tight',
-    leading: 'leading-tight',
-  },
-  h2: {
-    size: 'text-3xl md:text-4xl',
-    weight: 'font-semibold',
-    tracking: 'tracking-tight',
-    leading: 'leading-snug',
-  },
-  h3: {
-    size: 'text-2xl md:text-3xl',
-    weight: 'font-semibold',
-    leading: 'leading-snug',
-  },
-  h4: {
-    size: 'text-xl md:text-2xl',
-    weight: 'font-medium',
-    leading: 'leading-snug',
-  },
-  body: {
-    size: 'text-base',
-    weight: 'font-normal',
-    leading: 'leading-relaxed',
-  },
-  small: {
-    size: 'text-sm',
-    weight: 'font-medium',
-    leading: 'leading-normal',
-  },
-  muted: {
-    size: 'text-sm',
-    weight: 'font-normal',
-    color: 'text-muted-foreground',
-    leading: 'leading-relaxed',
-  },
-  label: {
-    size: 'text-xs uppercase',
-    weight: 'font-bold',
-    tracking: 'tracking-wider',
-    color: 'text-muted-foreground',
-    leading: 'leading-none',
-  }
+  h1: { size: 'text-4xl md:text-5xl lg:text-6xl', weight: 'font-bold', tracking: 'tracking-tight', leading: 'leading-tight' },
+  h2: { size: 'text-3xl md:text-4xl', weight: 'font-semibold', tracking: 'tracking-tight', leading: 'leading-snug' },
+  h3: { size: 'text-2xl md:text-3xl', weight: 'font-semibold', leading: 'leading-snug' },
+  h4: { size: 'text-xl md:text-2xl', weight: 'font-medium', leading: 'leading-snug' },
+  body: { size: 'text-base', weight: 'font-normal', leading: 'leading-relaxed' },
+  small: { size: 'text-sm', weight: 'font-medium', leading: 'leading-normal' },
+  muted: { size: 'text-sm', weight: 'font-normal', color: 'text-muted-foreground', leading: 'leading-relaxed' },
+  label: { size: 'text-xs uppercase', weight: 'font-bold', tracking: 'tracking-wider', color: 'text-muted-foreground', leading: 'leading-none' }
 } as const;
 
 export const gridCols = {

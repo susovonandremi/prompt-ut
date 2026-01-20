@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, Globe, Sparkles, X, Paperclip, Send, ThumbsUp, ThumbsDown, Download } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,52 +57,72 @@ export const ChatSidebar = React.memo(function ChatSidebar({
     onTabChange
 }: ChatSidebarProps) {
     return (
-        <div className={`w-[400px] flex flex-col border-r bg-muted/30 backdrop-blur-xl transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`w-[400px] flex flex-col border-r border-white/5 bg-background transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="flex-1 flex flex-col min-h-0">
-                <div className="p-4 border-b bg-background/50 backdrop-blur flex-shrink-0">
+                <div className="p-4 border-b border-white/5 bg-background flex-shrink-0">
                     <button
                         onClick={() => window.location.reload()}
                         className="font-bold flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer"
                     >
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-blue-500 flex items-center justify-center text-white">
-                            <Sparkles className="w-4 h-4" />
+                        <div className="relative w-8 h-8">
+                            <Image src="/logo.png" alt="REVision Logo" fill className="object-contain" />
                         </div>
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500 text-lg">
+                        <span className="text-white text-lg font-medium tracking-tight">
                             REVision
                         </span>
                     </button>
                 </div>
                 <Tabs value={activeTab} onValueChange={onTabChange} className="flex-1 flex flex-col min-h-0">
-                    <TabsList className="w-full grid grid-cols-2 bg-muted/50 mx-4 mt-2 flex-shrink-0" style={{ width: 'calc(100% - 2rem)' }}>
-                        <TabsTrigger value="chat" className="gap-2 data-[state=active]:bg-background"><MessageSquare className="w-4 h-4" /> Chat</TabsTrigger>
-                        <TabsTrigger value="discover" className="gap-2 data-[state=active]:bg-background"><Globe className="w-4 h-4" /> Discover</TabsTrigger>
+                    <TabsList className="w-full grid grid-cols-2 bg-white/5 mx-4 mt-2 flex-shrink-0 border border-white/5" style={{ width: 'calc(100% - 2rem)' }}>
+                        <TabsTrigger value="chat" className="gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"><MessageSquare className="w-4 h-4" /> Chat</TabsTrigger>
+                        <TabsTrigger value="discover" className="gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"><Globe className="w-4 h-4" /> Discover</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 mt-0">
                         <div className="flex-1 overflow-y-auto p-4 flex flex-col" ref={scrollRef}>
                             <div className="mt-auto space-y-6">
-                                {messages.map((msg) => (
-                                    <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                        {msg.image && (
-                                            <div className="relative w-32 h-32 rounded-lg overflow-hidden border mb-1">
-                                                <Image src={msg.image} alt="User upload" fill className="object-cover" />
+                                <AnimatePresence initial={false}>
+                                    {messages.map((msg) => (
+                                        <motion.div
+                                            key={msg.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            layout
+                                            className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                                        >
+                                            {msg.image && (
+                                                <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-white/10 mb-1">
+                                                    <Image src={msg.image} alt="User upload" fill className="object-cover" />
+                                                </div>
+                                            )}
+                                            <div className={`p-4 rounded-2xl text-sm leading-relaxed max-w-[90%] shadow-sm ${msg.role === 'user'
+                                                ? 'bg-gradient-to-br from-neutral-800 to-neutral-900 text-white rounded-br-sm border border-white/5'
+                                                : 'bg-white/5 backdrop-blur-md text-foreground rounded-bl-sm'
+                                                }`}>
+                                                {msg.content}
                                             </div>
-                                        )}
-                                        <div className={`p-3 rounded-xl text-sm max-w-[90%] ${msg.role === 'user'
-                                            ? 'bg-primary text-primary-foreground rounded-br-none'
-                                            : 'bg-muted rounded-bl-none'
-                                            }`}>
-                                            {msg.content}
-                                        </div>
 
-                                        {msg.thinking && (
-                                            <ThinkingProcess steps={msg.thinking} isOpen={false} />
-                                        )}
-                                    </div>
-                                ))}
-
+                                            {msg.thinking && (
+                                                <ThinkingProcess steps={msg.thinking} isOpen={false} />
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
                                 {isLoading && (
                                     <div className="w-full">
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="flex items-start gap-3 mb-4"
+                                        >
+                                            <div className="relative w-8 h-8 rounded-full bg-white/5 flex items-center justify-center overflow-hidden">
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent w-[200%] animate-shimmer" />
+                                                <Sparkles className="w-4 h-4 text-white/50" />
+                                            </div>
+                                            <div className="bg-white/5 rounded-2xl rounded-bl-sm p-4 text-sm text-muted-foreground">
+                                                <span className="animate-pulse">Thinking...</span>
+                                            </div>
+                                        </motion.div>
                                         <ThinkingProcess steps={currentThinking} isOpen={true} />
                                     </div>
                                 )}
@@ -225,8 +246,8 @@ export const ChatSidebar = React.memo(function ChatSidebar({
                             </div>
                         </div>
                     </TabsContent>
-                </Tabs>
-            </div>
-        </div>
+                </Tabs >
+            </div >
+        </div >
     );
 });

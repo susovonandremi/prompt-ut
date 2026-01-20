@@ -58,34 +58,40 @@
 
 @layer base {
   :root {
-    /* Lovable Dark Theme Base */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* High Fidelity Black Void Theme */
+    /* Background: #050505 -> 0 0% 2% */
+    --background: 0 0% 2%;
+    /* Foreground: #EDEDED -> 0 0% 93% */
+    --foreground: 0 0% 93%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    /* Card: #0A0A0A -> 0 0% 4% */
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 93%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    /* Popover: #121212 -> 0 0% 7% */
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 93%;
 
-    --primary: 252 100% 70%;
-    --primary-foreground: 240 5.9% 10%;
+    /* Primary: Keeping a vibrant purple/violet for the gradient accent base */
+    --primary: 265 89% 66%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    /* Secondary: Muted glass feel */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 93%;
 
-    --muted: 240 3.7% 15.9%;
+    --muted: 0 0% 12%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 93%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 265 89% 66%;
 
     --radius: 0.75rem;
   }
@@ -97,68 +103,36 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased tracking-tight;
   }
 }
 
 @layer utilities {
-  /* Enhanced hero gradient with vibrant ambient lighting */
-  .lovable-hero-gradient {
-    background: 
-      /* Central top glow - purple */
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
-      /* Left purple orb */
-      radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.35) 0%, transparent 40%),
-      /* Right pink orb */
-      radial-gradient(circle at 90% 20%, rgba(236, 72, 153, 0.3) 0%, transparent 40%),
-      /* Center blue accent */
-      radial-gradient(circle at 50% 60%, rgba(56, 189, 248, 0.1) 0%, transparent 40%),
-      /* Bottom left warm glow */
-      radial-gradient(circle at 20% 85%, rgba(251, 146, 60, 0.12) 0%, transparent 35%),
-      /* Bottom right cool glow */
-      radial-gradient(circle at 80% 90%, rgba(99, 102, 241, 0.18) 0%, transparent 35%),
-      /* Ambient fill */
-      linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(139, 92, 246, 0.05) 100%);
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)];
   }
 
   .glass-input {
-    @apply bg-black/50 backdrop-blur-xl border border-white/15 shadow-2xl;
-    transition: all 0.3s ease;
+    @apply bg-white/5 border border-white/10 transition-all duration-300 rounded-3xl;
   }
-
+  
   .glass-input:focus-within {
-    @apply border-primary/50;
-    box-shadow: 0 0 25px rgba(139, 92, 246, 0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    @apply border-white/20 bg-white/10;
   }
 
-  .glass-input.loading {
-    animation: glass-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes glass-pulse {
-    0%, 100% {
-      border-color: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
-    }
-    50% {
-      border-color: rgba(139, 92, 246, 0.4);
-      box-shadow: 0 0 30px rgba(139, 92, 246, 0.25);
-    }
+  /* Void Glow Utility */
+  .void-glow {
+    background: radial-gradient(circle at center, rgba(120, 119, 198, 0.15), transparent 70%);
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/70;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-zinc-200 to-zinc-500;
+  }
+  
+  .text-gradient-silver {
+     @apply bg-clip-text text-transparent bg-gradient-to-b from-zinc-100 to-zinc-400;
   }
 
-  .lovable-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-
-  .gradient-generate {
-    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-  }
-
-  /* Smooth transition utility for interactive elements */
   .smooth-transition {
     @apply transition-all duration-200 ease-out;
   }
