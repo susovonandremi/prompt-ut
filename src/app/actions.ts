@@ -34,24 +34,32 @@ export async function saveToHub(prompt: string, dsl: any, style: string) {
 }
 
 export async function getHubPosts() {
-  const { userId } = await auth();
+  console.log("Fetching Hub Posts...");
+  try {
+    const { userId } = await auth();
 
-  const posts = await prisma.post.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: {
-      user: true,
-      votes: userId ? {
-        where: { userId }
-      } : false
-    }
-  });
+    const posts = await prisma.post.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        user: true,
+        votes: userId ? {
+          where: { userId }
+        } : false
+      }
+    });
 
-  // Transform to include hasVoted status for the current user
-  return posts.map(post => ({
-    ...post,
-    hasVoted: userId && post.votes?.length ? post.votes[0].type : null
-  }));
+    console.log(`Found ${posts.length} posts`);
+
+    // Transform to include hasVoted status for the current user
+    return posts.map(post => ({
+      ...post,
+      hasVoted: userId && post.votes?.length ? post.votes[0].type : null
+    }));
+  } catch (error) {
+    console.error("Error fetching Hub posts:", error);
+    return [];
+  }
 }
 
 export async function toggleVote(postId: string, direction: "UP" | "DOWN") {
