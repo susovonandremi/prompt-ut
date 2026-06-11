@@ -1,18 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useUser, useClerk } from '@clerk/nextjs';
 import { ThinkingStep } from '@/components/ThinkingProcess';
 import { generateUI } from '@/lib/ai-service';
 import { toast } from 'sonner';
-import { saveToHub, getHubPosts } from '@/app/actions';
 import { Hero } from '@/components/Hero';
 import { ChatSidebar, Message } from '@/components/ChatSidebar';
 import { PreviewArea } from '@/components/PreviewArea';
+import { getGalleryPosts, saveGalleryPost } from '@/lib/gallery';
 
 export default function ChatPage() {
-  const { user } = useUser();
-  const { openSignIn } = useClerk();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -32,9 +29,9 @@ export default function ChatPage() {
     }
   }, [messages, currentThinking]);
 
-  // Fetch Hub Posts
+  // Fetch local gallery posts on load
   useEffect(() => {
-    getHubPosts().then(setHubPosts).catch(console.error);
+    setHubPosts(getGalleryPosts());
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,19 +64,34 @@ export default function ChatPage() {
 
     // Simulate thinking steps for UI feedback
     const steps: ThinkingStep[] = [
-      { id: '1', label: 'Analyzing Request', status: 'active' },
-      { id: '2', label: 'Enhancing Prompt', status: 'pending' },
-      { id: '3', label: 'Planning Layout', status: 'pending' },
-      { id: '4', label: 'Generating Components', status: 'pending' }
+      { id: '1', label: 'Analyzing request...', status: 'active' },
+      { id: '2', label: 'Resolving layout grid...', status: 'pending' },
+      { id: '3', label: 'Applying Stitch design system...', status: 'pending' },
+      { id: '4', label: 'Generating components code...', status: 'pending' }
     ];
     setCurrentThinking(steps);
 
     try {
       // Simulate step progress
-      setTimeout(() => setCurrentThinking(s => s.map(step => step.id === '1' ? { ...step, status: 'completed' } : step.id === '2' ? { ...step, status: 'active' } : step)), 1000);
+      setTimeout(() => setCurrentThinking(s => s.map(step => step.id === '1' ? { ...step, status: 'completed' } : step.id === '2' ? { ...step, status: 'active' } : step)), 800);
+      setTimeout(() => setCurrentThinking(s => s.map(step => step.id === '2' ? { ...step, status: 'completed' } : step.id === '3' ? { ...step, status: 'active' } : step)), 1600);
 
-      // Pass image to generateUI
-      const result = await generateUI(userMsg.content, "modern", userMsg.image);
+      // Build conversation history for iterative refinement
+      const history = messages.map(m => {
+        if (m.role === 'assistant') {
+          return {
+            role: m.role,
+            content: m.ui ? JSON.stringify({ version: "2", variants: [m.ui] }) : m.content
+          };
+        }
+        return {
+          role: m.role,
+          content: m.content
+        };
+      });
+
+      // Pass history to generateUI
+      const result = await generateUI(userMsg.content, "modern", userMsg.image, history);
 
       if (!result.success) {
         throw new Error(result.error);
@@ -91,27 +103,16 @@ export default function ChatPage() {
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Here is the design based on your request.",
+        content: "Here is your design, styled using the Stitch design system. You can iterate on this design by typing follow-up instructions in the sidebar.",
         thinking: [
-          { id: '1', label: 'Request Analysis', status: 'completed', details: 'User requested a UI design.' },
+          { id: '1', label: 'Request Analysis', status: 'completed', details: 'Iterative layout design requested.' },
           { id: '2', label: 'Prompt Enhancement', status: 'completed', details: result.thinking.enhancedPrompt },
-          { id: '3', label: 'Generation', status: 'completed', details: 'Generated valid DSL v2.' }
+          { id: '3', label: 'Generation', status: 'completed', details: 'Rendered valid high-fidelity DSL.' }
         ],
         ui: result.data.variants[0]
       };
 
       setMessages(prev => [...prev, aiMsg]);
-
-      // Auto-save to Hub
-      if (user) {
-        saveToHub(userMsg.content, result.data.variants[0], "modern")
-          .then(() => {
-            toast.success("Saved to Hub!");
-            getHubPosts().then(setHubPosts); // Refresh hub
-          })
-          .catch(e => console.error("Failed to save", e));
-      }
-
     } catch (error: any) {
       let errorMessage = "Failed to generate UI";
 
@@ -127,52 +128,60 @@ export default function ChatPage() {
         }
       }
 
-      // Append a clear instruction if it looks like a timeout or network error
-      if (errorMessage.includes("digest") || errorMessage.includes("fetch")) {
-        errorMessage += " (Network/Timeout Error - Vercel logs might show more)";
-      }
-
       toast.error(errorMessage);
       console.error("UI Gen Error:", error);
     } finally {
       setIsLoading(false);
       setCurrentThinking([]);
     }
-  }, [input, selectedImage, isLoading, hasStarted, user]);
+  }, [input, selectedImage, isLoading, hasStarted, messages]);
 
   const handleUpload = useCallback(async () => {
-    // We need to access the latest messages state, but since we can't easily access it inside useCallback without adding it to deps (which causes re-creation),
-    // we'll rely on the fact that this function is recreated when messages change.
-    // Ideally, we'd pass the message to upload as an argument, but the PreviewArea just calls onUpload.
-    // For now, adding messages to dependency array is acceptable as upload isn't a high-frequency action.
-
-    // Actually, to avoid stale closures, we should probably pass the UI to upload from the child or use a ref for messages if we wanted to avoid re-creation.
-    // But given the frequency of upload, re-creating this function when messages change is fine.
-
     const lastUiMessage = [...messages].reverse().find(m => m.ui);
-    if (!lastUiMessage) return;
-
-    if (!user) {
-      toast.info("Please sign in to upload");
-      openSignIn();
+    if (!lastUiMessage) {
+      toast.error("Please generate a UI design before publishing.");
       return;
     }
 
     setIsUploading(true);
     try {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-      const promptText = lastUserMsg?.content || "Generated UI";
+      const promptText = lastUserMsg?.content || "Generated UI component";
 
-      await saveToHub(promptText, lastUiMessage.ui, "modern");
-      toast.success("Successfully uploaded to Hub!");
-      getHubPosts().then(setHubPosts);
+      const updatedPosts = saveGalleryPost(promptText, lastUiMessage.ui, "modern", "LocalDesigner");
+      setHubPosts(updatedPosts);
+      toast.success("Design published successfully to the local gallery!");
+      
+      // Auto switch to discover tab so the user sees their post
+      setActiveTab("discover");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to upload to Hub");
+      toast.error("Failed to publish design");
     } finally {
       setIsUploading(false);
     }
-  }, [messages, user, openSignIn]);
+  }, [messages]);
+
+  const handleRemix = useCallback((dsl: any, prompt: string) => {
+    // Set up messages state with the remixed component
+    setMessages([
+      {
+        id: `remix-user-${Date.now()}`,
+        role: 'user',
+        content: `Remix design: "${prompt}"`
+      },
+      {
+        id: `remix-ai-${Date.now()}`,
+        role: 'assistant',
+        content: `Loaded design template: "${prompt}". You can modify, iterate or redesign it by sending new prompts.`,
+        ui: dsl
+      }
+    ]);
+    
+    setInput(prompt);
+    setActiveTab("chat");
+    toast.success("Loaded design template into your sandbox!");
+  }, []);
 
   const handleOpenDiscover = useCallback(() => {
     setActiveTab("discover");
@@ -196,9 +205,6 @@ export default function ChatPage() {
         isLoading={isLoading}
       />
 
-      {/* Debug Connection Button */}
-      {/* Debug Connection Button Removed */}
-
       <div className={`flex w-full h-full transition-opacity duration-500 ${hasStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <ChatSidebar
           hasStarted={hasStarted}
@@ -214,9 +220,11 @@ export default function ChatPage() {
           fileInputRef={fileInputRef}
           handleFileSelect={handleFileSelect}
           hubPosts={hubPosts}
+          setHubPosts={setHubPosts}
           scrollRef={scrollRef}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          onRemix={handleRemix}
         />
 
         <PreviewArea

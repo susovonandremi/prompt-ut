@@ -1,11 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUp, Image as ImageIcon, Layout, Mic, Paperclip, Sparkles, X, Loader2 } from 'lucide-react';
+import { ArrowUp, Layout, Paperclip, Sparkles, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { toast } from 'sonner';
-
-import { useClerk, useUser, UserButton } from '@clerk/nextjs';
 
 interface HeroProps {
     hasStarted: boolean;
@@ -32,8 +30,6 @@ export function Hero({
     onOpenDiscover,
     isLoading = false
 }: HeroProps) {
-    const { openSignIn, openSignUp } = useClerk();
-    const { isSignedIn } = useUser();
 
     return (
         <AnimatePresence>
@@ -51,20 +47,15 @@ export function Hero({
                     {/* Header: Minimal */}
                     <header className="absolute top-0 w-full p-8 flex justify-between items-center max-w-7xl mx-auto z-10">
                         <div className="flex items-center gap-2">
-                            <div className="relative w-8 h-8">
-                                <Image src="/logo.png" alt="REVision Logo" fill className="object-contain" />
+                            <div className="w-7 h-7 rounded bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+                                S
                             </div>
-                            <span className="font-medium text-lg tracking-tight text-white">REVision</span>
+                            <span className="font-semibold text-base tracking-tight text-white">Stitch AI</span>
                         </div>
                         <div className="flex gap-4 items-center">
-                            {!isSignedIn ? (
-                                <>
-                                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => openSignIn()}>Log in</Button>
-                                    <Button className="rounded-full px-6 bg-white text-black hover:bg-white/90" onClick={() => openSignUp()}>Get started</Button>
-                                </>
-                            ) : (
-                                <UserButton />
-                            )}
+                            <Badge className="bg-indigo-600/10 text-indigo-400 border-none px-2.5 py-1 text-xs font-semibold">
+                                Version 1.0 (revived)
+                            </Badge>
                         </div>
                     </header>
 
@@ -89,7 +80,7 @@ export function Hero({
                                 transition={{ delay: 0.2, duration: 0.8 }}
                                 className="text-lg md:text-xl text-muted-foreground/60 max-w-xl mx-auto font-light"
                             >
-                                Generate high-fidelity wireframes with code by just prompting your idea.
+                                Generate high-fidelity UI layout designs with Figma copy/paste compatibility.
                             </motion.p>
                         </div>
 
@@ -124,7 +115,7 @@ export function Hero({
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleSend();
                                     }}
-                                    placeholder="Describe your interface..."
+                                    placeholder="Describe your design interface..."
                                     className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground/30 text-foreground h-full"
                                 />
 
@@ -152,7 +143,7 @@ export function Hero({
                             {selectedImage && (
                                 <div className="absolute top-full mt-4 left-0 w-full flex justify-center">
                                     <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 group/img">
-                                        <Image src={selectedImage} alt="Preview" fill className="object-cover" />
+                                        <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
                                         <button
                                             onClick={() => setSelectedImage(null)}
                                             className="absolute top-0 right-0 bg-black/50 text-white p-1 rounded-bl-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
@@ -174,7 +165,7 @@ export function Hero({
                         transition={{ delay: 1, duration: 1 }}
                         className="absolute bottom-8 text-xs text-muted-foreground/30 hover:text-white transition-colors"
                     >
-                        Explore Community
+                        Explore Gallery Templates
                     </motion.button>
 
                 </motion.div>

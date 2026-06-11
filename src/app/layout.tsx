@@ -1,22 +1,22 @@
-import "./globals.css";
-import type { Metadata } from "next";
-import { ClerkProvider } from '@clerk/nextjs'; // Add Clerk
-import { Toaster } from "sonner"; // <--- Import this
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Toaster } from 'sonner';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: "AI UI Generator",
-  description: "Generate UI from text prompts",
+  title: 'AI UI Generator — Prompt to Design',
+  description: 'Generate stunning UI designs from text prompts. Export to Figma, HTML, React.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider> {/* Wrap app in Auth */}
-      <html lang="en" suppressHydrationWarning>
-        <body className="theme-lovable token-page">
-          {children}
-          <Toaster position="bottom-center" /> {/* <--- Add this line */}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased`}>
+        {children}
+        <Toaster position="bottom-center" richColors />
+      </body>
+    </html>
   );
 }
